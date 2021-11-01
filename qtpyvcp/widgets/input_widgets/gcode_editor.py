@@ -221,9 +221,9 @@ class EditorBase(QsciScintilla):
         self.setCaretLineBackgroundColor(QColor("#ffe4e4"))
 
         # Set custom gcode lexer
-        #self.lexer = GcodeLexer(self)
-        #self.lexer.setDefaultFont(font)
-        #self.setLexer(self.lexer)
+        self.lexer = GcodeLexer(self)
+        self.lexer.setDefaultFont(font)
+        self.setLexer(self.lexer)
 
         # default gray background
         self.set_background_color('#C0C0C0')
