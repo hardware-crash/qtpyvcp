@@ -377,6 +377,10 @@ class GcodeTextEdit(QPlainTextEdit):
     @Property(bool)
     def syntaxHighlighting(self):
         return self.syntax_highlighting
+    
+    @syntaxHighlighting.setter
+    def syntaxHighlighting(self, state):
+        self.syntax_highlighting = state
 
     def setPlainText(self, p_str):
         # FixMe: Keep a reference to old QTextDocuments form previously loaded
