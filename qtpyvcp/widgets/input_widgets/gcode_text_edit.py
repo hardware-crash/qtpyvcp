@@ -149,8 +149,6 @@ class GcodeTextEdit(QPlainTextEdit):
         self.focused_line = 1
         self.current_line_background = QColor(self.palette().alternateBase())
         self.readonly = False
-        self.syntax_highlighting = False
-
 
         self.old_docs = []
         # set the custom margin
@@ -375,11 +373,6 @@ class GcodeTextEdit(QPlainTextEdit):
 
         super(GcodeTextEdit, self).changeEvent(event)
 
-    @Property(bool)
-    def syntaxHighlighting(self):
-        return self.syntax_highlighting
-
-
     def setPlainText(self, p_str):
         # FixMe: Keep a reference to old QTextDocuments form previously loaded
         # files. This is needed to prevent garbage collection which results in a
@@ -390,9 +383,8 @@ class GcodeTextEdit(QPlainTextEdit):
         doc.setDocumentLayout(QPlainTextDocumentLayout(doc))
         doc.setPlainText(p_str)
 
-        # start syntax highlighting if set
-        if self.syntax_highlighting == True:
-            self.gCodeHighlighter = GcodeSyntaxHighlighter(doc, self.font)
+        # start syntax heightening
+        self.gCodeHighlighter = GcodeSyntaxHighlighter(doc, self.font)
 
         self.setDocument(doc)
         self.margin.updateWidth()
@@ -498,7 +490,7 @@ class GcodeTextEdit(QPlainTextEdit):
                     # LOG.debug(e)
                     LOG.info(f"File encoding doesn't match {enc}, trying others")
             LOG.info(f"File encoding: {enc}")
-            # set to Plain Text
+            # set the syntax highlighter
             self.setPlainText(gcode)
             # self.gCodeHighlighter = GcodeSyntaxHighlighter(self.document(), self.font)
 
