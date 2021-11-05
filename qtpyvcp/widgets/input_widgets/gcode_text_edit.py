@@ -94,7 +94,7 @@ class GcodeSyntaxHighlighter(QSyntaxHighlighter):
             if isinstance(value, str) and value.startswith('QFont:'):
                 value = getattr(QFont, value[6:])
 
-            attr = 'set' + option[0].capitalize() + option[1:]
+            attr = f"set{option[0].capitalize()}{option[1:]}"
             getattr(char_fmt, attr)(value)
 
         return char_fmt

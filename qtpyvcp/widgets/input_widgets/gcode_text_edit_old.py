@@ -7,6 +7,7 @@ QPlainTextEdit based G-code editor with syntax highlighting.
 
 import os
 import oyaml as yaml
+import
 
 from qtpy.QtCore import (Qt, QRect, QRegularExpression, QEvent, Slot, Signal,
                          Property)
