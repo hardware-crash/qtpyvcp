@@ -1,6 +1,7 @@
 """
 GcodeTextEdit
 -------------
+
 QPlainTextEdit based G-code editor with syntax highlighting.
 """
 
@@ -27,6 +28,7 @@ from qtpyvcp.utilities.encode_utils import allEncodings
 
 from qtpyvcp.widgets.dialogs.find_replace_dialog import FindReplaceDialog
 
+
 LOG = getLogger(__name__)
 INFO = Info()
 STATUS = getPlugin('status')
@@ -45,6 +47,8 @@ class GcodeSyntaxHighlighter(QSyntaxHighlighter):
         self._abort = False
 
         self.loadSyntaxFromYAML()
+
+
 
     def loadSyntaxFromYAML(self):
 
@@ -79,6 +83,10 @@ class GcodeSyntaxHighlighter(QSyntaxHighlighter):
                 patterns = spec.get('match', [])
                 for pattern in patterns:
                     self.rules.append([QRegularExpression(pattern, cio), char_fmt])
+                
+        # Build a QRegExp for each pattern
+        # self.rules = [(QRegExp(patterns), index, char_fmt)
+        #               for (patterns, index, char_fmt) in rules]
 
     def charFormatFromSpec(self, fmt_spec):
 
@@ -94,7 +102,7 @@ class GcodeSyntaxHighlighter(QSyntaxHighlighter):
             if isinstance(value, str) and value.startswith('QFont:'):
                 value = getattr(QFont, value[6:])
 
-            attr = 'set' + option[0].capitalize() + option[1:]
+            attr = f"set{option[0].capitalize()}{option[1:]}"
             getattr(char_fmt, attr)(value)
 
         return char_fmt
@@ -130,6 +138,7 @@ class GcodeSyntaxHighlighter(QSyntaxHighlighter):
 
 class GcodeTextEdit(QPlainTextEdit):
     """G-code Text Edit
+
     QPlainTextEdit based G-code editor with syntax heightening.
     """
     focusLine = Signal(int)
