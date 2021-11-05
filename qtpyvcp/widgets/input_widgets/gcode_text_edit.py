@@ -6,6 +6,7 @@ QPlainTextEdit based G-code editor with syntax highlighting.
 
 import os
 import oyaml as yaml
+import re
 
 from qtpy.QtCore import (Qt, QRect, QRegularExpression, QEvent, Slot, Signal,
                          Property)
@@ -46,6 +47,9 @@ class GcodeSyntaxHighlighter(QSyntaxHighlighter):
 
         self.loadSyntaxFromYAML()
 
+    def add_mapping(self, pattern, pattern_format):
+        self.rules[pattern] = pattern_format
+
     def loadSyntaxFromYAML(self):
 
         if INFO.getGcodeSyntaxFile() is not None:
@@ -79,7 +83,8 @@ class GcodeSyntaxHighlighter(QSyntaxHighlighter):
                 patterns = spec.get('match', [])
                 for pattern in patterns:
                     self.rules.append([QRegularExpression(pattern, cio), char_fmt])
-
+                    LOG.debug(self.rules)
+                    
     def charFormatFromSpec(self, fmt_spec):
 
         char_fmt = self.defaultCharFormat()
@@ -115,17 +120,20 @@ class GcodeSyntaxHighlighter(QSyntaxHighlighter):
             nth = 0
             match = regex.match(text, offset=0)
             index = match.capturedStart()
+            # Testing here !!!!!!!!!!!!!!
+            for match in re.finditer(r'\bG[0-9]*', text):
+                start, end = match.span()
+                self.setFormat(start, end-start, fmt)
+            # while index >= 0:
 
-            while index >= 0:
+            #     # We actually want the index of the nth match
+            #     index = match.capturedStart(nth)
+            #     length = match.capturedLength(nth)
+            #     self.setFormat(index, length, fmt)
 
-                # We actually want the index of the nth match
-                index = match.capturedStart(nth)
-                length = match.capturedLength(nth)
-                self.setFormat(index, length, fmt)
-
-                # check the rest of the string
-                match = regex.match(text, offset=index + length)
-                index = match.capturedStart()
+            #     # check the rest of the string
+            #     match = regex.match(text, offset=index + length)
+            #     index = match.capturedStart()
 
 
 class GcodeTextEdit(QPlainTextEdit):
@@ -189,6 +197,27 @@ class GcodeTextEdit(QPlainTextEdit):
         # connect status signals
         STATUS.file.notify(self.loadProgramFile)
         STATUS.motion_line.onValueChanged(self.setCurrentLine)
+
+
+    def setPlainText(self, p_str):
+        # FixMe: Keep a reference to old QTextDocuments form previously loaded
+        # files. This is needed to prevent garbage collection which results in a
+        # seg fault if the document is discarded while still being highlighted.
+        self.old_docs.append(self.document())
+
+        doc = QTextDocument()
+        doc.setDocumentLayout(QPlainTextDocumentLayout(doc))
+        doc.setPlainText(p_str)
+
+        # start syntax highlighting
+        if self.syntax_highlighting == True:
+            self.gCodeHighlighter = GcodeSyntaxHighlighter(doc, self.font)
+        
+        self.setDocument(doc)
+        self.margin.updateWidth()
+
+        # start syntax highlighting
+        # self.gCodeHighlighter = GcodeSyntaxHighlighter(self)
 
     @Slot(str)
     def set_search_term(self, text):
@@ -379,26 +408,6 @@ class GcodeTextEdit(QPlainTextEdit):
     @syntaxHighlighting.setter
     def syntaxHighlighting(self, state):
         self.syntax_highlighting = state
-
-    def setPlainText(self, p_str):
-        # FixMe: Keep a reference to old QTextDocuments form previously loaded
-        # files. This is needed to prevent garbage collection which results in a
-        # seg fault if the document is discarded while still being highlighted.
-        self.old_docs.append(self.document())
-
-        doc = QTextDocument()
-        doc.setDocumentLayout(QPlainTextDocumentLayout(doc))
-        doc.setPlainText(p_str)
-
-        # start syntax highlighting
-        if self.syntax_highlighting == True:
-            self.gCodeHighlighter = GcodeSyntaxHighlighter(doc, self.font)
-        
-        self.setDocument(doc)
-        self.margin.updateWidth()
-
-        # start syntax highlighting
-        # self.gCodeHighlighter = GcodeSyntaxHighlighter(self)
 
     @Slot(bool)
     def EditorReadOnly(self, state):
