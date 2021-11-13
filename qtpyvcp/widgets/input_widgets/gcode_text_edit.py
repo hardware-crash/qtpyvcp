@@ -1,12 +1,12 @@
 """
 GcodeTextEdit
 -------------
+
 QPlainTextEdit based G-code editor with syntax highlighting.
 """
 
 import os
 import oyaml as yaml
-import re
 
 from qtpy.QtCore import (Qt, QRect, QRegularExpression, QEvent, Slot, Signal,
                          Property)
@@ -28,6 +28,7 @@ from qtpyvcp.utilities.encode_utils import allEncodings
 
 from qtpyvcp.widgets.dialogs.find_replace_dialog import FindReplaceDialog
 
+
 LOG = getLogger(__name__)
 INFO = Info()
 STATUS = getPlugin('status')
@@ -35,20 +36,22 @@ YAML_DIR = os.path.dirname(DEFAULT_CONFIG_FILE)
 
 
 class GcodeSyntaxHighlighter(QSyntaxHighlighter):
-    def __init__(self, document, font):
+    def __init__(self, document, font, p_str):
         super(GcodeSyntaxHighlighter, self).__init__(document)
-
+        self.p_str = p_str
         self.font = font
-
         self.rules = []
         self.char_fmt = QTextCharFormat()
 
         self._abort = False
-
+        
         self.loadSyntaxFromYAML()
+        #self._highlight_lines = dict()
+        #_highlight_lines = {1, 4 ,8}
+        #LOG.debug(_highlight_lines)
+        self.highlightDocument(p_str, self.rules)
 
-    def add_mapping(self, pattern, pattern_format):
-        self.rules[pattern] = pattern_format
+
 
     def loadSyntaxFromYAML(self):
 
@@ -83,8 +86,11 @@ class GcodeSyntaxHighlighter(QSyntaxHighlighter):
                 patterns = spec.get('match', [])
                 for pattern in patterns:
                     self.rules.append([QRegularExpression(pattern, cio), char_fmt])
-                    LOG.debug(self.rules)
-                    
+                
+        # Build a QRegExp for each pattern
+        # self.rules = [(QRegExp(patterns), index, char_fmt)
+        #               for (patterns, index, char_fmt) in rules]
+
     def charFormatFromSpec(self, fmt_spec):
 
         char_fmt = self.defaultCharFormat()
@@ -109,35 +115,49 @@ class GcodeSyntaxHighlighter(QSyntaxHighlighter):
         char_fmt.setFont(self.font())
         return char_fmt
 
+    def highlight_line(self, line, fmt):
+        if isinstance(line, int) and line >= 0 and isinstance(fmt, QTextCharFormat):
+            self._highlight_lines[line] = fmt
+            tb = self.document().findBlockByLineNumber(line)
+            self.rehighlightBlock(tb)
+
+    def clear_highlight(self):
+        self._highlight_lines = dict()
+        self.rehighlight()
+
     def highlightBlock(self, text):
         """Apply syntax highlighting to the given block of text.
         """
+        line = self.currentBlock().blockNumber()
+        LOG.debug(line)
 
         QApplication.processEvents()
 
-        for regex, fmt in self.rules:
 
-            nth = 0
-            match = regex.match(text, offset=0)
-            index = match.capturedStart()
-            # Testing here !!!!!!!!!!!!!!
-            for match in re.finditer(r'\bG[0-9]*', text):
-                start, end = match.span()
-                self.setFormat(start, end-start, fmt)
-            # while index >= 0:
+    def highlightDocument(self, text, rules):
 
-            #     # We actually want the index of the nth match
-            #     index = match.capturedStart(nth)
-            #     length = match.capturedLength(nth)
-            #     self.setFormat(index, length, fmt)
+        for regex, fmt in rules:
+                
+                nth = 0
+                match = regex.match(text, offset=0)
+                index = match.capturedStart()
 
-            #     # check the rest of the string
-            #     match = regex.match(text, offset=index + length)
-            #     index = match.capturedStart()
+                while index >= 0:
+                    #LOG.debug(fmt)
+
+                    # We actually want the index of the nth match
+                    index = match.capturedStart(nth)
+                    length = match.capturedLength(nth)
+                    self.setFormat(index, length, fmt) # I get None with: LOG.debug(self.setFormat(index, length, fmt))
+
+                    # check the rest of the string
+                    match = regex.match(text, offset=index + length)
+                    index = match.capturedStart()
 
 
 class GcodeTextEdit(QPlainTextEdit):
     """G-code Text Edit
+
     QPlainTextEdit based G-code editor with syntax heightening.
     """
     focusLine = Signal(int)
@@ -197,27 +217,6 @@ class GcodeTextEdit(QPlainTextEdit):
         # connect status signals
         STATUS.file.notify(self.loadProgramFile)
         STATUS.motion_line.onValueChanged(self.setCurrentLine)
-
-
-    def setPlainText(self, p_str):
-        # FixMe: Keep a reference to old QTextDocuments form previously loaded
-        # files. This is needed to prevent garbage collection which results in a
-        # seg fault if the document is discarded while still being highlighted.
-        self.old_docs.append(self.document())
-
-        doc = QTextDocument()
-        doc.setDocumentLayout(QPlainTextDocumentLayout(doc))
-        doc.setPlainText(p_str)
-
-        # start syntax highlighting
-        if self.syntax_highlighting == True:
-            self.gCodeHighlighter = GcodeSyntaxHighlighter(doc, self.font)
-        
-        self.setDocument(doc)
-        self.margin.updateWidth()
-
-        # start syntax highlighting
-        # self.gCodeHighlighter = GcodeSyntaxHighlighter(self)
 
     @Slot(str)
     def set_search_term(self, text):
@@ -397,7 +396,7 @@ class GcodeTextEdit(QPlainTextEdit):
     def changeEvent(self, event):
         if event.type() == QEvent.FontChange:
             # Update syntax highlighter with new font
-            self.gCodeHighlighter = GcodeSyntaxHighlighter(self.document(), self.font)
+            self.gCodeHighlighter = GcodeSyntaxHighlighter.highlightDocument(self.document(), self.font)
 
         super(GcodeTextEdit, self).changeEvent(event)
 
@@ -408,6 +407,26 @@ class GcodeTextEdit(QPlainTextEdit):
     @syntaxHighlighting.setter
     def syntaxHighlighting(self, state):
         self.syntax_highlighting = state
+
+    def setPlainText(self, p_str):
+        # FixMe: Keep a reference to old QTextDocuments form previously loaded
+        # files. This is needed to prevent garbage collection which results in a
+        # seg fault if the document is discarded while still being highlighted.
+        self.old_docs.append(self.document())
+
+        doc = QTextDocument()
+        doc.setDocumentLayout(QPlainTextDocumentLayout(doc))
+        doc.setPlainText(p_str)
+        #LOG.debug(p_str)
+        self.setDocument(doc)
+        self.margin.updateWidth()
+
+        # start syntax highlighting
+        if self.syntax_highlighting == True:
+            self.gCodeHighlighter = GcodeSyntaxHighlighter(doc, self.font, p_str)
+
+        # start syntax highlighting
+        # self.gCodeHighlighter = GcodeSyntaxHighlighter(self)
 
     @Slot(bool)
     def EditorReadOnly(self, state):
@@ -509,6 +528,7 @@ class GcodeTextEdit(QPlainTextEdit):
             LOG.info(f"File encoding: {enc}")
             # set the syntax highlighter
             self.setPlainText(gcode)
+            #self.gCodeHighlighter.highlightDocument(gcode)
             # self.gCodeHighlighter = GcodeSyntaxHighlighter(self.document(), self.font)
 
     @Slot(int)
@@ -523,6 +543,8 @@ class GcodeTextEdit(QPlainTextEdit):
 
     def onCursorChanged(self):
         # highlights current line, find a way not to use QTextEdit
+        #self.gCodeHighlighter.clear_highlight()
+
         block_number = self.textCursor().blockNumber()
         if block_number != self.block_number:
             self.block_number = block_number
