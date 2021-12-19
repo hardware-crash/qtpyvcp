@@ -54,7 +54,7 @@ from wigglywidget import WigglyWidget
 # Set PYSIDE_DESIGNER_PLUGINS to point to this directory and load the plugin
 
 
-TOOLTIP = "A cool wiggly widget (Python)"
+TOOLTIP = "A cool wiggly widget (Pyooothon)"
 DOM_XML = """
 <ui language='c++'>
     <widget class='WigglyWidget' name='wigglyWidget'>

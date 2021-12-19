@@ -1,5 +1,5 @@
 from PySide2.QtGui import QIcon
-from PySide2.QtDesigner import QPyDesignerCustomWidgetPlugin
+from PySide2.QtDesigner import QPyDesignerCustomWidgetCollection
 
 
 from .plugin_extension import ExtensionFactory, Q_TYPEID
@@ -7,7 +7,7 @@ from .designer_hooks import DesignerHooks
 
 from .rules_editor import RulesEditorExtension
 
-class _DesignerPlugin(QPyDesignerCustomWidgetPlugin):
+class _DesignerPlugin(QPyDesignerCustomWidgetCollection):
 
     group_name = None
 
